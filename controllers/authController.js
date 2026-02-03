@@ -5,7 +5,6 @@ import generateToken from "../utils/generateToken.js";
 
 // @desc Register user
 // @route POST /api/auth/register
-
 export const registerUser = asyncHandler(async (req, res) => {
   const { firstName, lastName, email, contactNumber, password } = req.body;
 
@@ -45,8 +44,16 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
+  // 1. Check if email exists
   const user = await User.findOne({ email }).select("+password");
-  if (user && (await bcrypt.compare(password, user.password))) {
+
+  if (!user) {
+    res.status(404);
+    throw new Error("Email not found"); // Specific error
+  }
+
+  // 2. Check if password matches
+  if (await bcrypt.compare(password, user.password)) {
     res.json({
       _id: user._id,
       name: `${user.firstName} ${user.lastName}`,
@@ -56,6 +63,6 @@ export const loginUser = asyncHandler(async (req, res) => {
     });
   } else {
     res.status(401);
-    throw new Error("Invalid email or password");
+    throw new Error("Password is incorrect"); // Specific error
   }
 });
