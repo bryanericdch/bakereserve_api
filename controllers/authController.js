@@ -30,9 +30,11 @@ export const registerUser = asyncHandler(async (req, res) => {
     password: hashedPassword,
   });
 
+  // --- UPDATED RESPONSE ---
   res.status(201).json({
     _id: user._id,
-    name: `${user.firstName} ${user.lastName}`,
+    firstName: user.firstName, // Send separately
+    lastName: user.lastName, // Send separately
     email: user.email,
     role: user.role,
     token: generateToken(user._id),
@@ -44,25 +46,25 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // 1. Check if email exists in the database
   const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
-    res.status(404); // 404 Not Found
+    res.status(404);
     throw new Error("User does not exist");
   }
 
-  // 2. Check if the password matches
   if (await bcrypt.compare(password, user.password)) {
+    // --- UPDATED RESPONSE ---
     res.json({
       _id: user._id,
-      name: `${user.firstName} ${user.lastName}`,
+      firstName: user.firstName, // Send separately
+      lastName: user.lastName, // Send separately
       email: user.email,
       role: user.role,
       token: generateToken(user._id),
     });
   } else {
-    res.status(401); // 401 Unauthorized
+    res.status(401);
     throw new Error("Password is incorrect");
   }
 });
