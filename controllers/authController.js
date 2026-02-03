@@ -44,15 +44,15 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // 1. Check if email exists
+  // 1. Check if email exists in the database
   const user = await User.findOne({ email }).select("+password");
 
   if (!user) {
-    res.status(404);
-    throw new Error("Email not found"); // Specific error
+    res.status(404); // 404 Not Found
+    throw new Error("User does not exist");
   }
 
-  // 2. Check if password matches
+  // 2. Check if the password matches
   if (await bcrypt.compare(password, user.password)) {
     res.json({
       _id: user._id,
@@ -62,7 +62,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       token: generateToken(user._id),
     });
   } else {
-    res.status(401);
-    throw new Error("Password is incorrect"); // Specific error
+    res.status(401); // 401 Unauthorized
+    throw new Error("Password is incorrect");
   }
 });
