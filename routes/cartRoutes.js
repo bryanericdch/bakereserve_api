@@ -1,9 +1,9 @@
 import express from "express";
-import { addToCart } from "../controllers/cartController.js";
+import { addToCart, getCart } from "../controllers/cartController.js"; // Import getCart
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", protect, addToCart);
+router.route("/").post(protect, addToCart).get(protect, getCart); // Add GET route
 
 export default router;

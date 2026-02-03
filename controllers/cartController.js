@@ -41,6 +41,22 @@ export const addToCart = asyncHandler(async (req, res) => {
   res.status(200).json(cart);
 });
 
+// @desc Get user cart
+// @route GET /api/cart
+// @access Private
+export const getCart = asyncHandler(async (req, res) => {
+  const cart = await Cart.findOne({ user: req.user._id }).populate(
+    "items.product",
+    "name image category",
+  );
+
+  if (!cart) {
+    return res.json({ items: [] });
+  }
+
+  res.json(cart);
+});
+
 // export const addToCart = asyncHandler(async (req, res) => {
 //   const { productId, quantity, customization } = req.body;
 
