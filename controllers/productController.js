@@ -85,15 +85,17 @@ export const updateProduct = asyncHandler(async (req, res) => {
 // @desc Delete product (Admin)
 // @route DELETE /api/products/:id
 export const deleteProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
+  // Fix: Use findByIdAndUpdate to force the update even if other fields have validation errors (legacy data)
+  const product = await Product.findByIdAndUpdate(
+    req.params.id,
+    { isDeleted: true },
+    { new: true }, // Returns the updated document
+  );
+
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
-
-  // FIX 3: Soft Delete (Mark as deleted instead of removing)
-  product.isDeleted = true;
-  await product.save();
 
   res.json({ message: "Product hidden" });
 });
