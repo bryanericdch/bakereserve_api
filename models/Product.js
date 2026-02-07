@@ -47,7 +47,7 @@ const productSchema = mongoose.Schema(
         "Cupcake",
       ],
     },
-    // --- NEW FIELD: SOFT DELETE ---
+    // --- ADD THIS MISSING FIELD ---
     isDeleted: {
       type: Boolean,
       default: false,

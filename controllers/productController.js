@@ -13,7 +13,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     ...req.body,
     image: req.file.path,
     user: req.user._id,
-    isDeleted: false, // Ensure new products are visible
+    isDeleted: false,
   });
 
   res.status(201).json(product);
@@ -22,8 +22,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 // @desc Get all products (Public)
 // @route GET /api/products
 export const getProducts = asyncHandler(async (req, res) => {
-  // Fix: Only fetch products that are NOT deleted
-  // { $ne: true } ensures compatibility with old items that don't have the field yet
+  // FIX 1: Filter out deleted products
   const products = await Product.find({ isDeleted: { $ne: true } });
   res.json(products);
 });
@@ -32,9 +31,7 @@ export const getProducts = asyncHandler(async (req, res) => {
 // @route GET /api/products/:id
 export const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
-
-  // Optional: Prevent viewing if deleted, or allow for Order History
-  if (product) {
+  if (product && !product.isDeleted) {
     res.json(product);
   } else {
     res.status(404);
@@ -55,24 +52,30 @@ export const updateProduct = asyncHandler(async (req, res) => {
   const { name, price, description, category, subCategory, countInStock } =
     req.body;
 
+  // FIX 2: Manually update fields to prevent Enum errors
   product.name = name || product.name;
   product.price = price || product.price;
   product.description = description || product.description;
   product.countInStock = countInStock || product.countInStock;
   product.category = category || product.category;
 
-  // Clear subCategory if switching to bakery
+  // Logic: Clear subCategory if switching to Bakery
   if (product.category === "bakery") {
     product.subCategory = undefined;
-  } else if (subCategory) {
+  } else if (
+    subCategory &&
+    subCategory !== "null" &&
+    subCategory !== "undefined"
+  ) {
     product.subCategory = subCategory;
   }
 
+  // Update image only if a new file is uploaded
   if (req.file) {
     product.image = req.file.path;
   }
 
-  // Ensure updating brings it back if it was deleted
+  // Ensure product is visible if it was somehow deleted
   product.isDeleted = false;
 
   const updatedProduct = await product.save();
@@ -88,7 +91,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  // --- SOFT DELETE LOGIC ---
+  // FIX 3: Soft Delete (Mark as deleted instead of removing)
   product.isDeleted = true;
   await product.save();
 
