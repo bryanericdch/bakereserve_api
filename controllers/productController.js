@@ -12,8 +12,8 @@ export const createProduct = asyncHandler(async (req, res) => {
 
   const product = await Product.create({
     ...req.body,
-    image: req.file.path, // 🔥 Cloudinary URL
-    createdBy: req.user._id,
+    image: req.file.path,
+    user: req.user._id, // <--- CHANGE THIS (was createdBy)
   });
 
   res.status(201).json(product);
