@@ -2,52 +2,58 @@ import mongoose from "mongoose";
 
 const productSchema = mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+    },
     name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      required: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-    category: {
-      type: String,
-      enum: ["bakery", "cake"],
-      required: true,
-    },
-    subCategory: {
-      type: String,
+      type: mongoose.Schema.Types.String,
       required: true,
     },
     image: {
-      type: String, //imageURL or filepath
+      type: mongoose.Schema.Types.String,
       required: true,
     },
-    isAvailable: {
-      type: Boolean,
-      default: true,
+    description: {
+      type: mongoose.Schema.Types.String,
+      required: true,
     },
-
-    // Only used if  category is === "cake"
-    customizationOptions: {
-      flavors: [String],
-      sizes: [String],
-      designs: [String],
+    price: {
+      type: mongoose.Schema.Types.Number,
+      required: true,
+      default: 0,
     },
-
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    countInStock: {
+      type: mongoose.Schema.Types.Number,
+      required: true,
+      default: 0,
+    },
+    category: {
+      type: mongoose.Schema.Types.String,
+      required: true,
+      enum: ["bakery", "cake"],
+    },
+    // --- UPDATED: STRICT CAKE TYPES ---
+    subCategory: {
+      type: mongoose.Schema.Types.String,
+      required: false, // Optional for bakery items
+      enum: [
+        "Round Cake",
+        "Square Cake",
+        "Roll Cake",
+        "Heart Cake",
+        "Tiered Cake",
+        "Sheet Cake",
+        "Cupcake",
+      ],
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-export default mongoose.model("Product", productSchema);
+const Product = mongoose.model("Product", productSchema);
+
+export default Product;
