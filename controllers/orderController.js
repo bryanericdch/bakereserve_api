@@ -84,6 +84,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 export const getAllOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({})
     .populate("user", "firstName lastName email")
+    .populate("orderItems.product", "name category subCategory") // <--- ADDED THIS
     .sort({ createdAt: -1 });
 
   res.json(orders);
