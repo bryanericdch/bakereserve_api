@@ -1,6 +1,5 @@
 import asyncHandler from "express-async-handler";
 import Product from "../models/Product.js";
-// import { cloudinary } from "../config/cloudinary.js"; // Not strictly needed if using req.file.path
 
 // @desc Create product (Admin)
 // @route POST /api/products
@@ -12,8 +11,9 @@ export const createProduct = asyncHandler(async (req, res) => {
 
   const product = await Product.create({
     ...req.body,
-    image: req.file.path, // Cloudinary URL from Multer
-    user: req.user._id,   // Fix: Matches 'user' field in Model
+    image: req.file.path,
+    user: req.user._id,
+    isDeleted: false, // Ensure new products are visible
   });
 
   res.status(201).json(product);
@@ -22,8 +22,9 @@ export const createProduct = asyncHandler(async (req, res) => {
 // @desc Get all products (Public)
 // @route GET /api/products
 export const getProducts = asyncHandler(async (req, res) => {
-  // Fix: Removed { isAvailable: true } because the field doesn't exist in Schema
-  const products = await Product.find({}); 
+  // Fix: Only fetch products that are NOT deleted
+  // { $ne: true } ensures compatibility with old items that don't have the field yet
+  const products = await Product.find({ isDeleted: { $ne: true } });
   res.json(products);
 });
 
@@ -31,6 +32,8 @@ export const getProducts = asyncHandler(async (req, res) => {
 // @route GET /api/products/:id
 export const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
+
+  // Optional: Prevent viewing if deleted, or allow for Order History
   if (product) {
     res.json(product);
   } else {
@@ -49,8 +52,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  // Manual update to handle logic safely
-  const { name, price, description, category, subCategory, countInStock } = req.body;
+  const { name, price, description, category, subCategory, countInStock } =
+    req.body;
 
   product.name = name || product.name;
   product.price = price || product.price;
@@ -58,17 +61,19 @@ export const updateProduct = asyncHandler(async (req, res) => {
   product.countInStock = countInStock || product.countInStock;
   product.category = category || product.category;
 
-  // Logic: If category is Bakery, clear the Cake Type
-  if (product.category === 'bakery') {
-      product.subCategory = undefined; 
+  // Clear subCategory if switching to bakery
+  if (product.category === "bakery") {
+    product.subCategory = undefined;
   } else if (subCategory) {
-      product.subCategory = subCategory;
+    product.subCategory = subCategory;
   }
 
-  // Update image only if a new file is uploaded
   if (req.file) {
     product.image = req.file.path;
   }
+
+  // Ensure updating brings it back if it was deleted
+  product.isDeleted = false;
 
   const updatedProduct = await product.save();
   res.json(updatedProduct);
@@ -83,6 +88,9 @@ export const deleteProduct = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  await product.deleteOne();
-  res.json({ message: "Product removed" });
+  // --- SOFT DELETE LOGIC ---
+  product.isDeleted = true;
+  await product.save();
+
+  res.json({ message: "Product hidden" });
 });

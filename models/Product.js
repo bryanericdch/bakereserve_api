@@ -34,10 +34,9 @@ const productSchema = mongoose.Schema(
       required: true,
       enum: ["bakery", "cake"],
     },
-    // --- UPDATED: STRICT CAKE TYPES ---
     subCategory: {
       type: mongoose.Schema.Types.String,
-      required: false, // Optional for bakery items
+      required: false,
       enum: [
         "Round Cake",
         "Square Cake",
@@ -47,6 +46,11 @@ const productSchema = mongoose.Schema(
         "Sheet Cake",
         "Cupcake",
       ],
+    },
+    // --- NEW FIELD: SOFT DELETE ---
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   {
