@@ -2,8 +2,7 @@ import express from "express";
 import {
   addToCart,
   getCart,
-  updateCartItem,
-  removeCartItem,
+  removeItem, // <--- CHANGED from removeCartItem
   clearCart,
 } from "../controllers/cartController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -12,13 +11,10 @@ const router = express.Router();
 
 router
   .route("/")
-  .post(protect, addToCart)
   .get(protect, getCart)
-  .delete(protect, clearCart); // Clear All
+  .post(protect, addToCart)
+  .delete(protect, clearCart);
 
-router
-  .route("/:itemId")
-  .put(protect, updateCartItem) // Update Qty
-  .delete(protect, removeCartItem); // Remove One
+router.route("/:itemId").delete(protect, removeItem); // <--- CHANGED from removeCartItem
 
 export default router;
