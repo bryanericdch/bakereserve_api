@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
+import Product from "../models/Product.js";
 
 // @desc Checkout cart and create order
 // @route POST /api/orders/checkout
@@ -28,6 +29,30 @@ export const checkout = asyncHandler(async (req, res) => {
   if (!cart || cart.items.length === 0) {
     res.status(400);
     throw new Error("Cart is empty");
+  }
+
+  // 1. Check if everything is in stock FIRST (Atomic-like check)
+  for (const item of cart.items) {
+    const product = await Product.findById(item.product);
+
+    if (!product) {
+      res.status(404);
+      throw new Error(`Product not found: ${item.name}`);
+    }
+
+    if (product.countInStock < item.quantity) {
+      res.status(400);
+      throw new Error(
+        `Not enough stock for ${item.name}. Only ${product.countInStock} left.`,
+      );
+    }
+  }
+
+  // 2. All checks passed, now deduct stock
+  for (const item of cart.items) {
+    const product = await Product.findById(item.product);
+    product.countInStock = product.countInStock - item.quantity;
+    await product.save();
   }
 
   let totalPrice = 0;
