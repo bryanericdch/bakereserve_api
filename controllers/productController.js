@@ -49,19 +49,30 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  const { name, price, description, category, subCategory, countInStock } =
-    req.body;
+  // Extract all fields including new 'flavor'
+  const {
+    name,
+    price,
+    description,
+    category,
+    subCategory,
+    countInStock,
+    flavor,
+  } = req.body;
 
-  // FIX 2: Manually update fields to prevent Enum errors
   product.name = name || product.name;
   product.price = price || product.price;
   product.description = description || product.description;
   product.countInStock = countInStock || product.countInStock;
   product.category = category || product.category;
 
+  // Update Flavor
+  product.flavor = flavor || product.flavor;
+
   // Logic: Clear subCategory if switching to Bakery
   if (product.category === "bakery") {
     product.subCategory = undefined;
+    product.flavor = undefined; // Clear flavor for breads
   } else if (
     subCategory &&
     subCategory !== "null" &&
@@ -70,12 +81,10 @@ export const updateProduct = asyncHandler(async (req, res) => {
     product.subCategory = subCategory;
   }
 
-  // Update image only if a new file is uploaded
   if (req.file) {
     product.image = req.file.path;
   }
 
-  // Ensure product is visible if it was somehow deleted
   product.isDeleted = false;
 
   const updatedProduct = await product.save();

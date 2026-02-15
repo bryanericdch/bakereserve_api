@@ -34,6 +34,11 @@ const productSchema = mongoose.Schema(
       required: true,
       enum: ["bakery", "cake"],
     },
+    // Added Flavor for Pre-made Cakes
+    flavor: {
+      type: mongoose.Schema.Types.String,
+      required: false,
+    },
     subCategory: {
       type: mongoose.Schema.Types.String,
       required: false,
@@ -45,9 +50,16 @@ const productSchema = mongoose.Schema(
         "Tiered Cake",
         "Sheet Cake",
         "Cupcake",
+        "Pandesal",
+        "Ensaymada",
+        "Spanish Bread",
+        "Kabayan",
+        "Loaf",
+        "Bun",
+        "Toast",
+        "Other",
       ],
     },
-    // --- ADD THIS MISSING FIELD ---
     isDeleted: {
       type: Boolean,
       default: false,
@@ -59,5 +71,4 @@ const productSchema = mongoose.Schema(
 );
 
 const Product = mongoose.model("Product", productSchema);
-
 export default Product;
