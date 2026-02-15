@@ -2,7 +2,8 @@ import express from "express";
 import {
   addToCart,
   getCart,
-  removeItem, // <--- CHANGED from removeCartItem
+  updateCartItem,
+  removeCartItem, // <--- MATCHING NAME
   clearCart,
 } from "../controllers/cartController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -15,6 +16,9 @@ router
   .post(protect, addToCart)
   .delete(protect, clearCart);
 
-router.route("/:itemId").delete(protect, removeItem); // <--- CHANGED from removeCartItem
+router
+  .route("/:itemId")
+  .put(protect, updateCartItem)
+  .delete(protect, removeCartItem);
 
 export default router;
