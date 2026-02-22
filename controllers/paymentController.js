@@ -1,19 +1,24 @@
 import axios from "axios";
 import Order from "../models/Order.js";
 
+// @desc Create a Payment Intent for multiple orders
 export const createPaymentIntent = async (req, res) => {
-  const { orderId } = req.body;
+  const { orderIds } = req.body; // Now expects an array of IDs
 
-  const order = await Order.findById(orderId);
-  if (!order) {
-    res.status(404);
-    throw new Error("Order not found");
-  }
-
-  if (order.paymentMethod !== "ewallet") {
+  if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
     res.status(400);
-    throw new Error("Order does not require online payment");
+    throw new Error("Order IDs are required");
   }
+
+  // Fetch all orders
+  const orders = await Order.find({ _id: { $in: orderIds } });
+  if (orders.length === 0) {
+    res.status(404);
+    throw new Error("Orders not found");
+  }
+
+  // Calculate total amount for the single PayMongo transaction
+  const totalAmount = orders.reduce((acc, order) => acc + order.totalPrice, 0);
 
   try {
     const response = await axios.post(
@@ -21,10 +26,10 @@ export const createPaymentIntent = async (req, res) => {
       {
         data: {
           attributes: {
-            amount: Math.round(order.totalPrice * 100), // MUST be integer
+            amount: Math.round(totalAmount * 100), // MUST be integer in cents
             payment_method_allowed: ["gcash", "paymaya"],
             currency: "PHP",
-            description: `BakeReserve Order ${order._id}`,
+            description: `BakeReserve Orders: ${orderIds.join(", ")}`,
           },
         },
       },
@@ -40,9 +45,17 @@ export const createPaymentIntent = async (req, res) => {
       },
     );
 
+    const paymentIntentId = response.data.data.id;
+
+    // Attach this single Intent ID to ALL associated orders
+    await Promise.all(
+      orders.map(async (order) => {
+        order.paymentIntentId = paymentIntentId;
+        await order.save();
+      }),
+    );
+
     res.json(response.data);
-    order.paymentIntentId = paymentIntent.data.id;
-    await order.save();
   } catch (error) {
     console.error("PayMongo error:", error.response?.data || error.message);
     res.status(500);
@@ -50,8 +63,9 @@ export const createPaymentIntent = async (req, res) => {
   }
 };
 
+// @desc Create the Payment Method (GCash / PayMaya)
 export const createPaymentMethod = async (req, res) => {
-  const { type } = req.body; // "gcash" or "paymaya"
+  const { type } = req.body;
 
   if (!type) {
     res.status(400);
@@ -61,13 +75,7 @@ export const createPaymentMethod = async (req, res) => {
   try {
     const response = await axios.post(
       "https://api.paymongo.com/v1/payment_methods",
-      {
-        data: {
-          attributes: {
-            type,
-          },
-        },
-      },
+      { data: { attributes: { type } } },
       {
         headers: {
           Authorization:
@@ -79,20 +87,16 @@ export const createPaymentMethod = async (req, res) => {
         },
       },
     );
-
     res.json(response.data);
   } catch (error) {
-    console.error(
-      "PayMongo create method error:",
-      error.response?.data || error.message,
-    );
     res.status(500);
     throw new Error("Create payment method failed");
   }
 };
 
+// @desc Attach Method to Intent and Return Auth URL
 export const confirmPaymentIntent = async (req, res) => {
-  const { paymentIntentId, paymentMethodId } = req.body;
+  const { paymentIntentId, paymentMethodId, returnUrl } = req.body; // Added dynamic returnUrl
 
   if (!paymentIntentId || !paymentMethodId) {
     res.status(400);
@@ -106,7 +110,7 @@ export const confirmPaymentIntent = async (req, res) => {
         data: {
           attributes: {
             payment_method: paymentMethodId,
-            return_url: "http://localhost:3000/payment/success",
+            return_url: returnUrl || "http://localhost:5173/payment/status", // Fallback
           },
         },
       },
@@ -124,10 +128,6 @@ export const confirmPaymentIntent = async (req, res) => {
 
     res.json(response.data);
   } catch (error) {
-    console.error(
-      "🔴 PAYMONGO ATTACH ERROR:",
-      JSON.stringify(error.response?.data, null, 2),
-    );
     res.status(500);
     throw new Error("Payment confirmation failed");
   }
