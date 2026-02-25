@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import Notification from "../models/Notification.js";
 
 // @desc Checkout selected items and create separate orders if needed
 // @route POST /api/orders/checkout
@@ -164,6 +165,17 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     order.cancelledAt = new Date();
   }
   await order.save();
+  let notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} status was updated to: ${status.replace("_", " ")}`;
+  if (status === "approved")
+    notifMessage = `Great news! Your order #${order._id.toString().slice(-6).toUpperCase()} has been approved.`;
+  if (status === "ready_for_pickup")
+    notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} is ready for pickup!`;
+
+  await Notification.create({
+    user: order.user,
+    title: "Order Status Updated",
+    message: notifMessage,
+  });
   res.json(order);
 });
 
