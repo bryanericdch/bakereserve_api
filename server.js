@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
-
 dotenv.config();
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 import { initCloudinary } from "./config/cloudinary.js";
 initCloudinary();
 import express from "express";
