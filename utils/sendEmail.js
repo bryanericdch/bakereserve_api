@@ -2,21 +2,21 @@ import nodemailer from "nodemailer";
 
 const sendEmail = async ({ email, subject, message }) => {
   try {
-    // Check if env variables are actually loaded
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error("❌ ERROR: EMAIL_USER or EMAIL_PASS is missing from .env");
       throw new Error("Missing email credentials");
     }
 
-    // Use direct SMTP settings instead of the "gmail" shortcut
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
-      secure: true, // true for port 465
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      // 👇 THIS IS THE MAGIC FIX FOR RENDER 👇
+      family: 4,
     });
 
     const mailOptions = {
