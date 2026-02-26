@@ -1,35 +1,49 @@
-import nodemailer from "nodemailer";
+import axios from "axios";
 
 const sendEmail = async ({ email, subject, message }) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.error("❌ ERROR: EMAIL_USER or EMAIL_PASS is missing from .env");
+    if (!process.env.BREVO_API_KEY || !process.env.EMAIL_USER) {
+      console.error(
+        "❌ ERROR: BREVO_API_KEY or EMAIL_USER is missing from .env",
+      );
       throw new Error("Missing email credentials");
     }
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587, // 👇 Switched to 587
-      secure: false, // 👇 Must be false for 587
-      requireTLS: true, // 👇 Forces secure connection
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+    const payload = {
+      sender: {
+        name: "BakeReserve",
+        email: process.env.EMAIL_USER, // The Gmail you verified on Brevo
       },
-      family: 4, // Keep IPv4 override
-    });
-
-    const mailOptions = {
-      from: `"BakeReserve" <${process.env.EMAIL_USER}>`,
-      to: email,
+      to: [
+        {
+          email: email, // The user's email signing up
+        },
+      ],
       subject: subject,
-      html: message,
+      htmlContent: message,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully! Message ID:", info.messageId);
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      payload,
+      {
+        headers: {
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+
+    console.log(
+      "✅ Email sent successfully via Brevo! Message ID:",
+      response.data.messageId,
+    );
   } catch (error) {
-    console.error("❌ NODEMAILER ERROR:", error);
+    console.error(
+      "❌ BREVO EMAIL ERROR:",
+      error.response?.data || error.message,
+    );
     throw new Error("Email could not be sent");
   }
 };
