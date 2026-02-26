@@ -110,3 +110,83 @@ export const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Password is incorrect");
   }
 });
+
+// @desc Forgot Password (Generate Token & Send Email)
+// @route POST /api/auth/forgotpassword
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    res.status(404);
+    throw new Error("No user found with that email address");
+  }
+
+  // Generate random token
+  const resetToken = crypto.randomBytes(20).toString("hex");
+
+  // Hash it and save to DB
+  user.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+  user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // Expires in 10 mins
+  await user.save({ validateBeforeSave: false });
+
+  // Send Email
+  const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
+  const message = `
+    <h2>Password Reset Request</h2>
+    <p>You requested a password reset. Click the link below to set a new password:</p>
+    <a href="${resetUrl}" style="background:#f59e0b; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; display:inline-block;">Reset Password</a>
+    <p>If you did not request this, please ignore this email.</p>
+  `;
+
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: "BakeReserve Password Reset",
+      message,
+    });
+    res
+      .status(200)
+      .json({ message: "Password reset link sent to your email." });
+  } catch (error) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    res.status(500);
+    throw new Error("Email could not be sent");
+  }
+});
+
+// @desc Reset Password (Verify Token & Save New Password)
+// @route PUT /api/auth/resetpassword/:resetToken
+export const resetPassword = asyncHandler(async (req, res) => {
+  // Hash the URL token to match the DB
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(req.params.resetToken)
+    .digest("hex");
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    res.status(400);
+    throw new Error("Invalid or expired token");
+  }
+
+  // Hash new password
+  const salt = await bcrypt.genSalt(10);
+  user.password = await bcrypt.hash(req.body.password, salt);
+
+  // Clear tokens
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  res
+    .status(200)
+    .json({ message: "Password reset successful. You can now login." });
+});

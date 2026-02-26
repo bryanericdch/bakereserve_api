@@ -13,6 +13,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { errorHandler } from "./middleware/errorMiddleware.js";
 
 connectDB();
@@ -35,6 +36,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/users", userRoutes);
 
 app.use(errorHandler);
 
