@@ -9,14 +9,14 @@ const sendEmail = async ({ email, subject, message }) => {
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      port: 587, // 👇 Switched to 587
+      secure: false, // 👇 Must be false for 587
+      requireTLS: true, // 👇 Forces secure connection
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      // 👇 THIS IS THE MAGIC FIX FOR RENDER 👇
-      family: 4,
+      family: 4, // Keep IPv4 override
     });
 
     const mailOptions = {
