@@ -58,6 +58,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     subCategory,
     countInStock,
     flavor,
+    piecesPerPack,
   } = req.body;
 
   product.name = name || product.name;
@@ -65,6 +66,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
   product.description = description || product.description;
   product.countInStock = countInStock || product.countInStock;
   product.category = category || product.category;
+  product.piecesPerPack = piecesPerPack || product.piecesPerPack;
 
   // Update Flavor
   product.flavor = flavor || product.flavor;

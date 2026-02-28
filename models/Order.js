@@ -34,7 +34,7 @@ const orderSchema = mongoose.Schema(
     // --- NEW FIELD ---
     orderType: {
       type: String,
-      enum: ["cake", "bakery"],
+      enum: ["cake", "custom_cake", "bakery"],
       required: true,
     },
 

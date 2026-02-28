@@ -33,6 +33,9 @@ export const productValidator = [
     "bakery",
     "cake",
   ]),
+  check("piecesPerPack", "Pack size must be at least 1")
+    .optional()
+    .isInt({ min: 1 }),
 ];
 
 // 👇 ADD THIS: For UPDATING products (Fields are optional, allowing Restock to work)
@@ -51,4 +54,7 @@ export const productUpdateValidator = [
   check("category", "Category must be 'bakery' or 'cake'")
     .optional()
     .isIn(["bakery", "cake"]),
+  check("piecesPerPack", "Pack size must be at least 1")
+    .optional()
+    .isInt({ min: 1 }),
 ];

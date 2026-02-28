@@ -58,11 +58,10 @@ export const checkout = asyncHandler(async (req, res) => {
   }
 
   // --- SPLIT ITEMS BY CATEGORY ---
-  const cakeItems = [];
+  const customCakeItems = [];
+  const premadeCakeItems = [];
   const bakeryItems = [];
 
-  // We need to fetch full product details to check category
-  // (The cart might only have the ID, so we loop and check)
   for (const item of itemsToCheckout) {
     const product = await Product.findById(item.product);
 
@@ -72,12 +71,13 @@ export const checkout = asyncHandler(async (req, res) => {
       price: item.price,
       quantity: item.quantity,
       customization: item.customization,
-      requiresApproval:
-        !!item.customization && Object.keys(item.customization).length > 0,
+      requiresApproval: !!item.customization?.isCustomBuild,
     };
 
-    if (product.category === "cake") {
-      cakeItems.push(orderItem);
+    if (item.customization && item.customization.isCustomBuild) {
+      customCakeItems.push(orderItem);
+    } else if (product.category === "cake") {
+      premadeCakeItems.push(orderItem);
     } else {
       bakeryItems.push(orderItem);
     }
@@ -85,26 +85,45 @@ export const checkout = asyncHandler(async (req, res) => {
 
   const createdOrders = [];
 
-  // --- CREATE CAKE ORDER ---
-  if (cakeItems.length > 0) {
-    const cakeTotal = cakeItems.reduce(
+  // --- 1. CREATE CUSTOM CAKE ORDER (Requires Admin Approval) ---
+  if (customCakeItems.length > 0) {
+    const customTotal = customCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
       0,
     );
-    const cakeOrder = await Order.create({
+    const customOrder = await Order.create({
       user: req.user._id,
-      orderItems: cakeItems,
-      orderType: "cake", // <--- Distinct Type
+      orderItems: customCakeItems,
+      orderType: "custom_cake", // <--- New Distinct Type
       pickupDate,
       pickupTime,
       paymentMethod,
-      totalPrice: cakeTotal,
-      orderStatus: "pending", // Cakes always start pending for approval
+      totalPrice: customTotal,
+      orderStatus: "pending", // MUST BE APPROVED
     });
-    createdOrders.push(cakeOrder);
+    createdOrders.push(customOrder);
   }
 
-  // --- CREATE BAKERY ORDER ---
+  // --- 2. CREATE PRE-MADE CAKE ORDER (Auto-Approved) ---
+  if (premadeCakeItems.length > 0) {
+    const premadeTotal = premadeCakeItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0,
+    );
+    const premadeOrder = await Order.create({
+      user: req.user._id,
+      orderItems: premadeCakeItems,
+      orderType: "cake",
+      pickupDate,
+      pickupTime,
+      paymentMethod,
+      totalPrice: premadeTotal,
+      orderStatus: "approved", // AUTO-APPROVED
+    });
+    createdOrders.push(premadeOrder);
+  }
+
+  // --- 3. CREATE BAKERY ORDER (Auto-Approved) ---
   if (bakeryItems.length > 0) {
     const bakeryTotal = bakeryItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -113,12 +132,12 @@ export const checkout = asyncHandler(async (req, res) => {
     const bakeryOrder = await Order.create({
       user: req.user._id,
       orderItems: bakeryItems,
-      orderType: "bakery", // <--- Distinct Type
+      orderType: "bakery",
       pickupDate,
       pickupTime,
       paymentMethod,
       totalPrice: bakeryTotal,
-      orderStatus: "approved", // Bakery items can be auto-approved (or pending if you prefer)
+      orderStatus: "approved", // AUTO-APPROVED
     });
     createdOrders.push(bakeryOrder);
   }

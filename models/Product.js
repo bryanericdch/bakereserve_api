@@ -29,6 +29,10 @@ const productSchema = mongoose.Schema(
       required: true,
       default: 0,
     },
+    piecesPerPack: {
+      type: mongoose.Schema.Types.Number,
+      default: 1, // Default to 1 (useful for cakes)
+    },
     category: {
       type: mongoose.Schema.Types.String,
       required: true,
