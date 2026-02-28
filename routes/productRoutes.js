@@ -11,22 +11,26 @@ import { protect } from "../middleware/authMiddleware.js";
 import { adminOnly } from "../middleware/roleMiddleware.js";
 import upload from "../middleware/uploadMiddleware.js";
 
-// IMPORT THE NEW VALIDATORS
+// 👇 IMPORT THE NEW UPDATE VALIDATOR
 import {
   productValidator,
+  productUpdateValidator,
   validateRequest,
 } from "../middleware/validationMiddleware.js";
 
 const router = express.Router();
 
-router.route("/").get(getProducts).post(
-  protect,
-  adminOnly,
-  upload.single("image"),
-  productValidator, // <-- Add Validator Rule
-  validateRequest, // <-- Add Catcher
-  createProduct,
-);
+router
+  .route("/")
+  .get(getProducts)
+  .post(
+    protect,
+    adminOnly,
+    upload.single("image"),
+    productValidator,
+    validateRequest,
+    createProduct,
+  );
 
 router
   .route("/:id")
@@ -35,8 +39,8 @@ router
     protect,
     adminOnly,
     upload.single("image"),
-    productValidator, // <-- Add Validator Rule
-    validateRequest, // <-- Add Catcher
+    productUpdateValidator, // 👇 USE THE UPDATE VALIDATOR HERE
+    validateRequest,
     updateProduct,
   )
   .delete(protect, adminOnly, deleteProduct);

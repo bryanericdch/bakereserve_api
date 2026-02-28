@@ -1,17 +1,14 @@
 import { check, validationResult } from "express-validator";
 
-// 1. Catcher Function: This checks if any of the rules below failed
 export const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(400);
-    // Throw the very first error message so our global error handler catches it
     throw new Error(errors.array()[0].msg);
   }
   next();
 };
 
-// 2. Rules for Authentication
 export const registerValidator = [
   check("firstName", "First Name is required").not().isEmpty().trim(),
   check("lastName", "Last Name is required").not().isEmpty().trim(),
@@ -27,7 +24,7 @@ export const loginValidator = [
   check("password", "Password is required").exists(),
 ];
 
-// 3. Rules for Products (Ensures prices and stock are never negative)
+// For creating NEW products (Everything is required)
 export const productValidator = [
   check("name", "Product name is required").not().isEmpty().trim(),
   check("price", "Price must be a positive number").isFloat({ min: 0 }),
@@ -36,4 +33,22 @@ export const productValidator = [
     "bakery",
     "cake",
   ]),
+];
+
+// 👇 ADD THIS: For UPDATING products (Fields are optional, allowing Restock to work)
+export const productUpdateValidator = [
+  check("name", "Product name cannot be empty")
+    .optional()
+    .not()
+    .isEmpty()
+    .trim(),
+  check("price", "Price must be a positive number")
+    .optional()
+    .isFloat({ min: 0 }),
+  check("countInStock", "Stock must be a positive integer")
+    .optional()
+    .isInt({ min: 0 }),
+  check("category", "Category must be 'bakery' or 'cake'")
+    .optional()
+    .isIn(["bakery", "cake"]),
 ];
