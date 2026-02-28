@@ -3,16 +3,25 @@ import {
   registerUser,
   loginUser,
   verifyEmail,
-} from "../controllers/authController.js";
-import {
   forgotPassword,
   resetPassword,
 } from "../controllers/authController.js";
 
+// IMPORT THE NEW VALIDATORS
+import {
+  registerValidator,
+  loginValidator,
+  validateRequest,
+} from "../middleware/validationMiddleware.js";
+
 const router = express.Router();
+
 router.get("/verify-email/:token", verifyEmail);
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+
+// INJECT VALIDATORS BEFORE THE CONTROLLER
+router.post("/register", registerValidator, validateRequest, registerUser);
+router.post("/login", loginValidator, validateRequest, loginUser);
+
 router.post("/forgotpassword", forgotPassword);
 router.put("/resetpassword/:resetToken", resetPassword);
 
