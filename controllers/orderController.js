@@ -43,7 +43,7 @@ export const checkout = asyncHandler(async (req, res) => {
     await product.save();
   }
 
-  // --- SPLIT ITEMS BY CATEGORY ---
+  // --- SPLIT ITEMS BY EXACT CATEGORY ---
   const customCakeItems = [];
   const premadeCakeItems = [];
   const bakeryItems = [];
@@ -79,7 +79,7 @@ export const checkout = asyncHandler(async (req, res) => {
     const customOrder = await Order.create({
       user: req.user._id,
       orderItems: customCakeItems,
-      orderType: "custom_cake", // <--- FIX
+      orderType: "custom_cake",
       pickupDate,
       pickupTime,
       paymentMethod,
@@ -145,7 +145,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 export const getAllOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({})
     .populate("user", "firstName lastName email")
-    .populate("orderItems.product", "image") // <--- FIX: Fetch Image for Admin Modal
+    .populate("orderItems.product", "image")
     .sort({ createdAt: -1 });
   res.json(orders);
 });

@@ -20,6 +20,11 @@ export const addToCart = asyncHandler(async (req, res) => {
     if (sizeObj) itemPrice += sizeObj.price;
   }
 
+  // --- NEW: Rename the item if it is a Custom Build ---
+  const itemName = customization?.isCustomBuild
+    ? "Customized Cake"
+    : product.name;
+
   const itemIndex = cart.items.findIndex(
     (item) =>
       item.product.toString() === productId &&
@@ -32,7 +37,7 @@ export const addToCart = asyncHandler(async (req, res) => {
   } else {
     cart.items.push({
       product: productId,
-      name: product.name,
+      name: itemName, // <--- Now uses "Customized Cake" or the original name
       image: product.image,
       price: itemPrice,
       quantity,
