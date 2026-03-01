@@ -156,7 +156,6 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     updateData.cancelledAt = new Date();
   }
 
-  // --- FIX: Using findByIdAndUpdate bypasses strict validation so buttons never fail ---
   const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
     new: true,
     runValidators: false,
@@ -166,6 +165,29 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Order not found");
   }
+
+  // --- FIX: GUARANTEED NOTIFICATION CREATION ---
+  try {
+    let notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} status was updated to: ${status.replace("_", " ")}.`;
+
+    if (status === "approved")
+      notifMessage = `Great news! Your order #${order._id.toString().slice(-6).toUpperCase()} has been approved and is now in process.`;
+    if (status === "ready_for_pickup")
+      notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} is baked and ready for pickup!`;
+    if (status === "cancelled" || status === "rejected")
+      notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} was ${status}. Please contact us.`;
+
+    if (order.user) {
+      await Notification.create({
+        user: order.user,
+        title: "Order Status Update",
+        message: notifMessage,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to create notification:", error);
+  }
+
   res.json(order);
 });
 
