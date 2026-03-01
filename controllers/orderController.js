@@ -43,7 +43,6 @@ export const checkout = asyncHandler(async (req, res) => {
     await product.save();
   }
 
-  // --- SPLIT ITEMS BY EXACT CATEGORY ---
   const customCakeItems = [];
   const premadeCakeItems = [];
   const bakeryItems = [];
@@ -70,7 +69,7 @@ export const checkout = asyncHandler(async (req, res) => {
 
   const createdOrders = [];
 
-  // --- 1. CUSTOM CAKE ORDER (Pending) ---
+  // --- 1. CUSTOM CAKE ORDER ---
   if (customCakeItems.length > 0) {
     const customTotal = customCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -89,7 +88,7 @@ export const checkout = asyncHandler(async (req, res) => {
     createdOrders.push(customOrder);
   }
 
-  // --- 2. PRE-MADE CAKE ORDER (Approved) ---
+  // --- 2. PRE-MADE CAKE ORDER ---
   if (premadeCakeItems.length > 0) {
     const premadeTotal = premadeCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -103,12 +102,12 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: premadeTotal,
-      orderStatus: "approved",
+      orderStatus: "pending", // <--- CHANGED FROM "approved" TO "pending"
     });
     createdOrders.push(premadeOrder);
   }
 
-  // --- 3. BAKERY ORDER (Approved) ---
+  // --- 3. BAKERY ORDER ---
   if (bakeryItems.length > 0) {
     const bakeryTotal = bakeryItems.reduce(
       (acc, item) => acc + item.price * item.quantity,

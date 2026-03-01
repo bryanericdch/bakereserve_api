@@ -6,24 +6,18 @@ const cartItemSchema = mongoose.Schema({
     ref: "Product",
     required: true,
   },
-  name: {
-    type: String,
-    required: true,
-  },
-  price: {
-    type: Number,
-    required: true,
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1,
-  },
+  name: { type: String, required: true },
+  image: { type: String, required: true },
+  price: { type: Number, required: true },
+  quantity: { type: Number, required: true, min: 1, default: 1 },
   customization: {
-    message: String,
-    size: String,
     flavor: String,
+    size: String,
+    message: String,
+    shape: String,
+    tiers: String,
     notes: String,
+    isCustomBuild: Boolean, // <--- ADDED THIS FIELD
   },
 });
 
@@ -33,7 +27,6 @@ const cartSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true,
     },
     items: [cartItemSchema],
   },
@@ -42,4 +35,5 @@ const cartSchema = mongoose.Schema(
   },
 );
 
-export default mongoose.model("Cart", cartSchema);
+const Cart = mongoose.model("Cart", cartSchema);
+export default Cart;
