@@ -27,7 +27,7 @@ const orderSchema = mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     orderItems: [orderItemSchema],
 
-    // --- UPDATED: Added custom_cake ---
+    // --- FIX: Added "custom_cake" to the allowed list ---
     orderType: {
       type: String,
       enum: ["cake", "custom_cake", "bakery"],

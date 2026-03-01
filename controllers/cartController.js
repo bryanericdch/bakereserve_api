@@ -4,7 +4,6 @@ import Product from "../models/Product.js";
 
 export const addToCart = asyncHandler(async (req, res) => {
   const { productId, quantity, customization } = req.body;
-
   const product = await Product.findById(productId);
   if (!product) {
     res.status(404);
@@ -20,7 +19,7 @@ export const addToCart = asyncHandler(async (req, res) => {
     if (sizeObj) itemPrice += sizeObj.price;
   }
 
-  // --- NEW: Rename the item if it is a Custom Build ---
+  // --- FIX: Force name to "Customized Cake" if it's a custom build ---
   const itemName = customization?.isCustomBuild
     ? "Customized Cake"
     : product.name;
@@ -37,7 +36,7 @@ export const addToCart = asyncHandler(async (req, res) => {
   } else {
     cart.items.push({
       product: productId,
-      name: itemName, // <--- Now uses "Customized Cake" or the original name
+      name: itemName, // Applied dynamic name
       image: product.image,
       price: itemPrice,
       quantity,

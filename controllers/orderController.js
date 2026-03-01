@@ -2,7 +2,6 @@ import asyncHandler from "express-async-handler";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
-import Notification from "../models/Notification.js";
 
 export const checkout = asyncHandler(async (req, res) => {
   const { pickupDate, pickupTime, paymentMethod, selectedItemIds } = req.body;
@@ -69,7 +68,6 @@ export const checkout = asyncHandler(async (req, res) => {
 
   const createdOrders = [];
 
-  // --- 1. CUSTOM CAKE ORDER ---
   if (customCakeItems.length > 0) {
     const customTotal = customCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -88,7 +86,6 @@ export const checkout = asyncHandler(async (req, res) => {
     createdOrders.push(customOrder);
   }
 
-  // --- 2. PRE-MADE CAKE ORDER ---
   if (premadeCakeItems.length > 0) {
     const premadeTotal = premadeCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -102,12 +99,11 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: premadeTotal,
-      orderStatus: "pending", // <--- CHANGED FROM "approved" TO "pending"
+      orderStatus: "pending", // <--- Pre-made cakes now start pending
     });
     createdOrders.push(premadeOrder);
   }
 
-  // --- 3. BAKERY ORDER ---
   if (bakeryItems.length > 0) {
     const bakeryTotal = bakeryItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -130,7 +126,6 @@ export const checkout = asyncHandler(async (req, res) => {
     (item) => !selectedItemIds.includes(item._id.toString()),
   );
   await cart.save();
-
   res.status(201).json({ message: "Order(s) placed", orders: createdOrders });
 });
 
@@ -151,20 +146,25 @@ export const getAllOrders = asyncHandler(async (req, res) => {
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  const order = await Order.findById(req.params.id);
+  const updateData = { orderStatus: status };
+
+  if (status === "approved") {
+    updateData.approvedBy = req.user._id;
+    updateData.approvedAt = new Date();
+  }
+  if (status === "cancelled" || status === "rejected") {
+    updateData.cancelledAt = new Date();
+  }
+
+  // FIX: findByIdAndUpdate bypasses strict validation so older orders won't crash the server
+  const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
+    new: true,
+  });
+
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
   }
-  order.orderStatus = status;
-  if (status === "approved") {
-    order.approvedBy = req.user._id;
-    order.approvedAt = new Date();
-  }
-  if (status === "cancelled" || status === "rejected") {
-    order.cancelledAt = new Date();
-  }
-  await order.save();
   res.json(order);
 });
 
