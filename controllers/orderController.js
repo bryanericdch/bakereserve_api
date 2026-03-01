@@ -1,8 +1,8 @@
 import asyncHandler from "express-async-handler";
-import Notification from "../models/Notification.js";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import Notification from "../models/Notification.js";
 
 export const checkout = asyncHandler(async (req, res) => {
   const { pickupDate, pickupTime, paymentMethod, selectedItemIds } = req.body;
@@ -118,7 +118,7 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: bakeryTotal,
-      orderStatus: "approved",
+      orderStatus: "pending", // <--- CHANGED FROM APPROVED TO PENDING
     });
     createdOrders.push(bakeryOrder);
   }
@@ -137,16 +137,17 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+// --- UPDATED POPULATE TO INCLUDE CONTACT & ADDRESS ---
 export const getAllOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({})
-    .populate("user", "firstName lastName email")
+    .populate("user", "firstName lastName email contactNumber address")
     .populate("orderItems.product", "image")
     .sort({ createdAt: -1 });
   res.json(orders);
 });
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { status } = req.body;
+  const { status, rejectReason } = req.body; // <-- EXTRACT REJECT REASON
   const updateData = { orderStatus: status };
 
   if (status === "approved") {
@@ -161,22 +162,24 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     new: true,
     runValidators: false,
   });
-
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
   }
 
-  // --- FIX: GUARANTEED NOTIFICATION CREATION ---
+  // Create notification
   try {
     let notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} status was updated to: ${status.replace("_", " ")}.`;
 
     if (status === "approved")
       notifMessage = `Great news! Your order #${order._id.toString().slice(-6).toUpperCase()} has been approved and is now in process.`;
-    if (status === "ready_for_pickup")
+    else if (status === "ready_for_pickup")
       notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} is baked and ready for pickup!`;
-    if (status === "cancelled" || status === "rejected")
-      notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} was ${status}. Please contact us.`;
+    else if (status === "cancelled" || status === "rejected") {
+      notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} was ${status}.`;
+      if (rejectReason) notifMessage += ` Reason: ${rejectReason}`;
+      else notifMessage += " Please contact us if you have questions.";
+    }
 
     if (order.user) {
       await Notification.create({
@@ -194,7 +197,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
 export const getOrderById = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate("user", "firstName lastName email")
+    .populate("user", "firstName lastName email contactNumber address")
     .populate("orderItems.product", "name price image");
   if (!order) {
     res.status(404);
