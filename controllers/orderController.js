@@ -99,7 +99,7 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: premadeTotal,
-      orderStatus: "pending", // <--- Pre-made cakes now start pending
+      orderStatus: "pending",
     });
     createdOrders.push(premadeOrder);
   }
@@ -156,9 +156,10 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     updateData.cancelledAt = new Date();
   }
 
-  // FIX: findByIdAndUpdate bypasses strict validation so older orders won't crash the server
+  // --- FIX: Using findByIdAndUpdate bypasses strict validation so buttons never fail ---
   const order = await Order.findByIdAndUpdate(req.params.id, updateData, {
     new: true,
+    runValidators: false,
   });
 
   if (!order) {
