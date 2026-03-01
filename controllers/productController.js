@@ -1,34 +1,13 @@
 import asyncHandler from "express-async-handler";
 import Product from "../models/Product.js";
 
-// @desc Create product (Admin)
-// @route POST /api/products
-export const createProduct = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    res.status(400);
-    throw new Error("Product image is required");
-  }
-
-  const product = await Product.create({
-    ...req.body,
-    image: req.file.path,
-    user: req.user._id,
-    isDeleted: false,
-  });
-
-  res.status(201).json(product);
-});
-
-// @desc Get all products (Public)
-// @route GET /api/products
 export const getProducts = asyncHandler(async (req, res) => {
-  // FIX 1: Filter out deleted products
-  const products = await Product.find({ isDeleted: { $ne: true } });
+  const products = await Product.find({ isDeleted: false }).sort({
+    createdAt: -1,
+  });
   res.json(products);
 });
 
-// @desc Get single product
-// @route GET /api/products/:id
 export const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (product && !product.isDeleted) {
@@ -39,74 +18,85 @@ export const getProductById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc Update product (Admin)
-// @route PUT /api/products/:id
-export const updateProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id);
-
-  if (!product) {
-    res.status(404);
-    throw new Error("Product not found");
-  }
-
-  // Extract all fields including new 'flavor'
+export const createProduct = asyncHandler(async (req, res) => {
   const {
     name,
     price,
     description,
     category,
-    subCategory,
     countInStock,
     flavor,
+    subCategory,
     piecesPerPack,
   } = req.body;
 
-  product.name = name || product.name;
-  product.price = price || product.price;
-  product.description = description || product.description;
-  product.countInStock = countInStock || product.countInStock;
-  product.category = category || product.category;
-  product.piecesPerPack = piecesPerPack || product.piecesPerPack;
+  // Parse the dynamic sizes array from frontend
+  const sizes = req.body.sizes ? JSON.parse(req.body.sizes) : [];
 
-  // Update Flavor
-  product.flavor = flavor || product.flavor;
+  const product = new Product({
+    user: req.user._id,
+    name,
+    price,
+    description,
+    category,
+    countInStock,
+    flavor,
+    subCategory,
+    piecesPerPack,
+    sizes,
+    image: req.file ? req.file.path : "https://via.placeholder.com/300",
+  });
 
-  // Logic: Clear subCategory if switching to Bakery
-  if (product.category === "bakery") {
-    product.subCategory = undefined;
-    product.flavor = undefined; // Clear flavor for breads
-  } else if (
-    subCategory &&
-    subCategory !== "null" &&
-    subCategory !== "undefined"
-  ) {
-    product.subCategory = subCategory;
-  }
-
-  if (req.file) {
-    product.image = req.file.path;
-  }
-
-  product.isDeleted = false;
-
-  const updatedProduct = await product.save();
-  res.json(updatedProduct);
+  const createdProduct = await product.save();
+  res.status(201).json(createdProduct);
 });
 
-// @desc Delete product (Admin)
-// @route DELETE /api/products/:id
-export const deleteProduct = asyncHandler(async (req, res) => {
-  // Fix: Use findByIdAndUpdate to force the update even if other fields have validation errors (legacy data)
-  const product = await Product.findByIdAndUpdate(
-    req.params.id,
-    { isDeleted: true },
-    { new: true }, // Returns the updated document
-  );
+export const updateProduct = asyncHandler(async (req, res) => {
+  const {
+    name,
+    price,
+    description,
+    category,
+    countInStock,
+    flavor,
+    subCategory,
+    piecesPerPack,
+  } = req.body;
+  const sizes = req.body.sizes ? JSON.parse(req.body.sizes) : [];
 
-  if (!product) {
+  const product = await Product.findById(req.params.id);
+
+  if (product) {
+    product.name = name || product.name;
+    product.price = price !== undefined ? price : product.price;
+    product.description = description || product.description;
+    product.category = category || product.category;
+    product.countInStock =
+      countInStock !== undefined ? countInStock : product.countInStock;
+    product.flavor = flavor || product.flavor;
+    product.subCategory = subCategory || product.subCategory;
+    product.piecesPerPack = piecesPerPack || product.piecesPerPack;
+
+    // Update sizes
+    if (req.body.sizes) product.sizes = sizes;
+    if (req.file) product.image = req.file.path;
+
+    const updatedProduct = await product.save();
+    res.json(updatedProduct);
+  } else {
     res.status(404);
     throw new Error("Product not found");
   }
+});
 
-  res.json({ message: "Product hidden" });
+export const deleteProduct = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (product) {
+    product.isDeleted = true;
+    await product.save();
+    res.json({ message: "Product removed" });
+  } else {
+    res.status(404);
+    throw new Error("Product not found");
+  }
 });

@@ -4,40 +4,27 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import Notification from "../models/Notification.js";
 
-// @desc Checkout selected items and create separate orders if needed
-// @route POST /api/orders/checkout
-// @access Private
 export const checkout = asyncHandler(async (req, res) => {
   const { pickupDate, pickupTime, paymentMethod, selectedItemIds } = req.body;
-
   if (!pickupDate || !pickupTime || !paymentMethod) {
     res.status(400);
-    throw new Error("Pickup date, time, and payment method are required");
+    throw new Error("Required fields missing");
   }
 
-  if (!selectedItemIds || selectedItemIds.length === 0) {
-    res.status(400);
-    throw new Error("No items selected for checkout");
-  }
-
-  // Fetch Cart
   const cart = await Cart.findOne({ user: req.user._id });
   if (!cart || cart.items.length === 0) {
     res.status(400);
     throw new Error("Cart is empty");
   }
 
-  // Filter only selected items
   const itemsToCheckout = cart.items.filter((item) =>
     selectedItemIds.includes(item._id.toString()),
   );
-
   if (itemsToCheckout.length === 0) {
     res.status(400);
     throw new Error("Invalid selection");
   }
 
-  // --- VALIDATE STOCK FOR SELECTED ITEMS ---
   for (const item of itemsToCheckout) {
     const product = await Product.findById(item.product);
     if (!product) {
@@ -50,7 +37,6 @@ export const checkout = asyncHandler(async (req, res) => {
     }
   }
 
-  // --- DEDUCT STOCK ---
   for (const item of itemsToCheckout) {
     const product = await Product.findById(item.product);
     product.countInStock -= item.quantity;
@@ -64,7 +50,6 @@ export const checkout = asyncHandler(async (req, res) => {
 
   for (const item of itemsToCheckout) {
     const product = await Product.findById(item.product);
-
     const orderItem = {
       product: item.product,
       name: item.name,
@@ -85,7 +70,7 @@ export const checkout = asyncHandler(async (req, res) => {
 
   const createdOrders = [];
 
-  // --- 1. CREATE CUSTOM CAKE ORDER (Requires Admin Approval) ---
+  // --- 1. CUSTOM CAKE ORDER (Pending) ---
   if (customCakeItems.length > 0) {
     const customTotal = customCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -94,17 +79,17 @@ export const checkout = asyncHandler(async (req, res) => {
     const customOrder = await Order.create({
       user: req.user._id,
       orderItems: customCakeItems,
-      orderType: "custom_cake", // <--- New Distinct Type
+      orderType: "custom_cake", // <--- FIX
       pickupDate,
       pickupTime,
       paymentMethod,
       totalPrice: customTotal,
-      orderStatus: "pending", // MUST BE APPROVED
+      orderStatus: "pending",
     });
     createdOrders.push(customOrder);
   }
 
-  // --- 2. CREATE PRE-MADE CAKE ORDER (Auto-Approved) ---
+  // --- 2. PRE-MADE CAKE ORDER (Approved) ---
   if (premadeCakeItems.length > 0) {
     const premadeTotal = premadeCakeItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -118,12 +103,12 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: premadeTotal,
-      orderStatus: "approved", // AUTO-APPROVED
+      orderStatus: "approved",
     });
     createdOrders.push(premadeOrder);
   }
 
-  // --- 3. CREATE BAKERY ORDER (Auto-Approved) ---
+  // --- 3. BAKERY ORDER (Approved) ---
   if (bakeryItems.length > 0) {
     const bakeryTotal = bakeryItems.reduce(
       (acc, item) => acc + item.price * item.quantity,
@@ -137,12 +122,11 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: bakeryTotal,
-      orderStatus: "approved", // AUTO-APPROVED
+      orderStatus: "approved",
     });
     createdOrders.push(bakeryOrder);
   }
 
-  // --- REMOVE SELECTED ITEMS FROM CART ---
   cart.items = cart.items.filter(
     (item) => !selectedItemIds.includes(item._id.toString()),
   );
@@ -151,7 +135,6 @@ export const checkout = asyncHandler(async (req, res) => {
   res.status(201).json({ message: "Order(s) placed", orders: createdOrders });
 });
 
-// ... (Keep existing getMyOrders, getAllOrders, etc.)
 export const getMyOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.user._id }).sort({
     createdAt: -1,
@@ -160,14 +143,13 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 });
 
 export const getAllOrders = asyncHandler(async (req, res) => {
-  // Populate 'user' for name/email
   const orders = await Order.find({})
     .populate("user", "firstName lastName email")
+    .populate("orderItems.product", "image") // <--- FIX: Fetch Image for Admin Modal
     .sort({ createdAt: -1 });
   res.json(orders);
 });
 
-// (Keep updateOrderStatus, getOrderById as they were)
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   const order = await Order.findById(req.params.id);
@@ -184,34 +166,16 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     order.cancelledAt = new Date();
   }
   await order.save();
-  let notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} status was updated to: ${status.replace("_", " ")}`;
-  if (status === "approved")
-    notifMessage = `Great news! Your order #${order._id.toString().slice(-6).toUpperCase()} has been approved.`;
-  if (status === "ready_for_pickup")
-    notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} is ready for pickup!`;
-
-  await Notification.create({
-    user: order.user,
-    title: "Order Status Updated",
-    message: notifMessage,
-  });
   res.json(order);
 });
 
 export const getOrderById = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
     .populate("user", "firstName lastName email")
-    .populate("orderItems.product", "name price");
+    .populate("orderItems.product", "name price image");
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
-  }
-  if (
-    order.user._id.toString() !== req.user._id.toString() &&
-    req.user.role !== "admin"
-  ) {
-    res.status(403);
-    throw new Error("Not authorized");
   }
   res.json(order);
 });

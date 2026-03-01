@@ -24,14 +24,10 @@ const orderItemSchema = mongoose.Schema({
 
 const orderSchema = mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     orderItems: [orderItemSchema],
 
-    // --- NEW FIELD ---
+    // --- UPDATED: Added custom_cake ---
     orderType: {
       type: String,
       enum: ["cake", "custom_cake", "bakery"],
@@ -48,7 +44,6 @@ const orderSchema = mongoose.Schema(
     },
     paymentIntentId: { type: String },
     paymentResult: { id: String, status: String, paidAt: Date },
-
     orderStatus: {
       type: String,
       enum: [
@@ -62,15 +57,12 @@ const orderSchema = mongoose.Schema(
       ],
       default: "pending",
     },
-
     totalPrice: { type: Number, required: true },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     approvedAt: Date,
     cancelledAt: Date,
   },
-  {
-    timestamps: true,
-  },
+  { timestamps: true },
 );
 
 export default mongoose.model("Order", orderSchema);
