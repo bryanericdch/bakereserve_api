@@ -14,11 +14,10 @@ export const addToCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ user: req.user._id });
   if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
 
-  // --- NEW: Calculate Price based on Size ---
   let itemPrice = product.price;
   if (customization && customization.size) {
     const sizeObj = product.sizes?.find((s) => s.size === customization.size);
-    if (sizeObj) itemPrice = sizeObj.price;
+    if (sizeObj) itemPrice += sizeObj.price;
   }
 
   const itemIndex = cart.items.findIndex(
@@ -35,7 +34,7 @@ export const addToCart = asyncHandler(async (req, res) => {
       product: productId,
       name: product.name,
       image: product.image,
-      price: itemPrice, // <--- Use updated price
+      price: itemPrice,
       quantity,
       customization: customization || {},
     });
