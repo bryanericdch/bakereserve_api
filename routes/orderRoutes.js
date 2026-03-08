@@ -5,7 +5,7 @@ import {
   getOrderById,
   getAllOrders,
   updateOrderStatus,
-  cancelMyOrder, // <-- Add this import
+  cancelMyOrder, // <-- MAKE SURE THIS IS IMPORTED
 } from "../controllers/orderController.js";
 import { protect, admin } from "../middleware/authMiddleware.js";
 
@@ -15,7 +15,7 @@ const router = express.Router();
 router.post("/checkout", protect, checkout);
 router.get("/my-orders", protect, getMyOrders);
 router.get("/:id", protect, getOrderById);
-router.put("/:id/cancel", protect, cancelMyOrder); // <-- NEW ROUTE
+router.put("/:id/cancel", protect, cancelMyOrder); // <-- MAKE SURE THIS ROUTE EXISTS
 
 // ADMIN
 router.get("/", protect, admin, getAllOrders);

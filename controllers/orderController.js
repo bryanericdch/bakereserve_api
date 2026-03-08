@@ -2,7 +2,8 @@ import asyncHandler from "express-async-handler";
 import Cart from "../models/Cart.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
-import Notification from "../models/Notification.js";
+import User from "../models/User.js"; // <-- NEEDED FOR CANCELLATION COUNT
+import Notification from "../models/Notification.js"; // <-- NEEDED FOR NOTIFICATIONS
 
 export const checkout = asyncHandler(async (req, res) => {
   const { pickupDate, pickupTime, paymentMethod, selectedItemIds } = req.body;
@@ -118,7 +119,7 @@ export const checkout = asyncHandler(async (req, res) => {
       pickupTime,
       paymentMethod,
       totalPrice: bakeryTotal,
-      orderStatus: "pending", // <--- CHANGED FROM APPROVED TO PENDING
+      orderStatus: "pending",
     });
     createdOrders.push(bakeryOrder);
   }
@@ -137,7 +138,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
-// --- UPDATED POPULATE TO INCLUDE CONTACT & ADDRESS ---
+// --- UPDATED: POPULATES USER ADDRESS & CONTACT FOR ADMIN ---
 export const getAllOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({})
     .populate("user", "firstName lastName email contactNumber address")
@@ -146,8 +147,9 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+// --- UPDATED: INCLUDES NOTIFICATION CREATION ---
 export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { status, rejectReason } = req.body; // <-- EXTRACT REJECT REASON
+  const { status, rejectReason } = req.body;
   const updateData = { orderStatus: status };
 
   if (status === "approved") {
@@ -167,7 +169,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error("Order not found");
   }
 
-  // Create notification
+  // Create notification safely
   try {
     let notifMessage = `Your order #${order._id.toString().slice(-6).toUpperCase()} status was updated to: ${status.replace("_", " ")}.`;
 
@@ -206,6 +208,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
+// --- NEW: FUNCTION TO HANDLE CUSTOMER CANCELLATIONS & COUNT STRIKES ---
 export const cancelMyOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
