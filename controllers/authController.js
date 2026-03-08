@@ -6,7 +6,8 @@ import generateToken from "../utils/generateToken.js";
 import sendEmail from "../utils/sendEmail.js";
 
 export const registerUser = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, contactNumber, password } = req.body;
+  const { firstName, lastName, email, contactNumber, password, address } =
+    req.body;
   if (!firstName || !lastName || !email || !contactNumber || !password) {
     res.status(400);
     throw new Error("All fields are required");
@@ -29,6 +30,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     contactNumber,
     password: hashedPassword,
     verificationToken,
+    address,
   });
 
   const verifyUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;

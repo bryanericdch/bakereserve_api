@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
+import Notification from "../models/Notification.js";
 
 export const updateUserProfile = asyncHandler(async (req, res) => {
   // Select password so we can verify the current one
@@ -88,6 +89,16 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   user.accountStatus = status;
   user.warningMessage = status === "warned" ? warningMessage : "";
   await user.save();
+
+  // --- NEW: CREATE WARNING NOTIFICATION ---
+  if (status === "warned") {
+    await Notification.create({
+      user: user._id,
+      title: "Account Warning ⚠",
+      message: warningMessage,
+      // You can use the title to determine where to link later
+    });
+  }
 
   res.json({ message: `User status updated to ${status}` });
 });
