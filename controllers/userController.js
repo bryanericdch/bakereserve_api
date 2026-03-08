@@ -54,3 +54,51 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 });
+
+import Order from "../models/Order.js";
+
+// @desc Admin: Get all customers with their purchase count
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({ role: "customer" }).select("-password");
+
+  // Aggregate completed orders per user
+  const usersWithStats = await Promise.all(
+    users.map(async (user) => {
+      const purchaseCount = await Order.countDocuments({
+        user: user._id,
+        orderStatus: "completed",
+      });
+      return { ...user._doc, purchaseCount };
+    }),
+  );
+
+  res.json(usersWithStats);
+});
+
+// @desc Admin: Update user status (Warn or Ban)
+export const updateUserStatus = asyncHandler(async (req, res) => {
+  const { status, warningMessage } = req.body;
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  user.accountStatus = status;
+  user.warningMessage = status === "warned" ? warningMessage : "";
+  await user.save();
+
+  res.json({ message: `User status updated to ${status}` });
+});
+
+// @desc Admin: Delete a user
+export const deleteUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  await User.findByIdAndDelete(req.params.id);
+  res.json({ message: "User account deleted permanently." });
+});

@@ -40,12 +40,10 @@ export const registerUser = asyncHandler(async (req, res) => {
       subject: "Verify your BakeReserve Account",
       message,
     });
-    res
-      .status(201)
-      .json({
-        message:
-          "Registration successful. Please check your email to verify your account.",
-      });
+    res.status(201).json({
+      message:
+        "Registration successful. Please check your email to verify your account.",
+    });
   } catch (error) {
     await User.findByIdAndDelete(user._id);
     res.status(500);
@@ -81,15 +79,25 @@ export const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Please verify your email address to login.");
   }
 
+  // --- NEW: BLOCK BANNED USERS ---
+  if (user.accountStatus === "banned") {
+    res.status(403);
+    throw new Error(
+      "Your account has been banned due to policy violations. Contact support.",
+    );
+  }
+
   if (await bcrypt.compare(password, user.password)) {
     res.json({
       _id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      contactNumber: user.contactNumber, // <-- FIXED
-      address: user.address, // <-- NEW
+      contactNumber: user.contactNumber,
+      address: user.address,
       role: user.role,
+      accountStatus: user.accountStatus, // Added
+      warningMessage: user.warningMessage, // Added
       token: generateToken(user._id),
     });
   } else {

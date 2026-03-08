@@ -6,13 +6,20 @@ const userSchema = mongoose.Schema(
     lastName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
     contactNumber: { type: String, required: true },
-
-    // --- NEW: ADDRESS FIELD ---
     address: { type: String, default: "" },
-
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
     isVerified: { type: Boolean, default: false },
+
+    // --- NEW: USER MANAGEMENT FIELDS ---
+    accountStatus: {
+      type: String,
+      enum: ["active", "warned", "banned"],
+      default: "active",
+    },
+    warningMessage: { type: String, default: "" },
+    cancellationCount: { type: Number, default: 0 },
+
     verificationToken: String,
     resetPasswordToken: String,
     resetPasswordExpire: Date,

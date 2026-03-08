@@ -205,3 +205,43 @@ export const getOrderById = asyncHandler(async (req, res) => {
   }
   res.json(order);
 });
+
+export const cancelMyOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  // Ensure the user owns this order
+  if (order.user.toString() !== req.user._id.toString()) {
+    res.status(401);
+    throw new Error("Not authorized to cancel this order");
+  }
+  if (order.orderStatus !== "pending") {
+    res.status(400);
+    throw new Error("Only pending orders can be cancelled.");
+  }
+
+  order.orderStatus = "cancelled";
+  order.cancelledAt = new Date();
+  await order.save({ runValidators: false });
+
+  // Update user's cancellation count
+  const user = await User.findById(req.user._id);
+  user.cancellationCount = (user.cancellationCount || 0) + 1;
+  await user.save();
+
+  // STRIKE 3 LOGIC: Notify Admins
+  if (user.cancellationCount === 3) {
+    const admins = await User.find({ role: "admin" });
+    const notifications = admins.map((admin) => ({
+      user: admin._id,
+      title: "High Cancellation Alert ⚠",
+      message: `Customer ${user.firstName} ${user.lastName} has cancelled 3 orders. Please review their account in the Users tab.`,
+    }));
+    if (notifications.length > 0) await Notification.insertMany(notifications);
+  }
+
+  res.json(order);
+});
