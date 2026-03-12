@@ -216,34 +216,44 @@ export const cancelMyOrder = asyncHandler(async (req, res) => {
     throw new Error("Order not found");
   }
 
-  // Ensure the user owns this order
   if (order.user.toString() !== req.user._id.toString()) {
     res.status(401);
     throw new Error("Not authorized to cancel this order");
   }
-  if (order.orderStatus !== "pending") {
+
+  if (order.orderStatus !== "pending" && order.orderStatus !== "approved") {
     res.status(400);
-    throw new Error("Only pending orders can be cancelled.");
+    throw new Error("Only pending or approved orders can be cancelled.");
   }
 
   order.orderStatus = "cancelled";
   order.cancelledAt = new Date();
   await order.save({ runValidators: false });
 
-  // Update user's cancellation count
   const user = await User.findById(req.user._id);
   user.cancellationCount = (user.cancellationCount || 0) + 1;
   await user.save();
 
-  // STRIKE 3 LOGIC: Notify Admins
+  const admins = await User.find({ role: "admin" });
+
+  // Create standard cancellation notification for admins
+  const standardNotifications = admins.map((admin) => ({
+    user: admin._id,
+    title: "Order Cancelled 🚫",
+    message: `Order #${order._id.toString().slice(-6).toUpperCase()} was cancelled by ${user.firstName} ${user.lastName}.`,
+  }));
+  if (standardNotifications.length > 0)
+    await Notification.insertMany(standardNotifications);
+
+  // Strike 3 Logic
   if (user.cancellationCount === 3) {
-    const admins = await User.find({ role: "admin" });
-    const notifications = admins.map((admin) => ({
+    const strikeNotifications = admins.map((admin) => ({
       user: admin._id,
       title: "High Cancellation Alert ⚠",
       message: `Customer ${user.firstName} ${user.lastName} has cancelled 3 orders. Please review their account in the Users tab.`,
     }));
-    if (notifications.length > 0) await Notification.insertMany(notifications);
+    if (strikeNotifications.length > 0)
+      await Notification.insertMany(strikeNotifications);
   }
 
   res.json(order);
